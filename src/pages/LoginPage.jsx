@@ -1,57 +1,180 @@
+// import { useState } from "react";
+// import { useNavigate } from "react-router-dom";
+// import { loginUser } from "../services/api"; // Upewnij się, że to jest "../services/api"
+// import { Link } from "react-router-dom";
+
+// /**
+//  * Komponent strony logowania.
+//  * Umożliwia użytkownikowi wprowadzenie danych logowania i przejście do dashboardu.
+//  */
+// function LoginPage({ onLoginSuccess }) {
+//   const [email, setEmail] = useState("");
+//   const [password, setPassword] = useState("");
+//   const [error, setError] = useState(null); // State for handling login errors
+//   const navigate = useNavigate();
+
+//   const handleLogin = async (e) => {
+//     e.preventDefault();
+//     setError(null); // Clear previous errors
+
+//     if (!email || !password) {
+//       setError("Wprowadź email i hasło.");
+//       return;
+//     }
+
+//     try {
+//       // Call the backend login endpoint
+//       const data = await loginUser({ userName: email, password: password }); // Backend expects UserName
+
+//       // Store the token and user email
+//       localStorage.setItem("token", data.token);
+//       localStorage.setItem("userEmail", data.email); // Store the email returned from backend
+
+//       onLoginSuccess(); // Update global login state in App.js
+//       navigate("/dashboard"); // Redirect to dashboard
+//     } catch (err) {
+//       console.error("Login failed:", err);
+//       setError(
+//         err.message || "Logowanie nie powiodło się. Sprawdź dane logowania."
+//       );
+//     }
+//   };
+
+//   return (
+//     <div className="container">
+//       <h2>Logowanie</h2>
+//       <form onSubmit={handleLogin}>
+//         <input
+//           type="email"
+//           placeholder="Email"
+//           value={email}
+//           onChange={(e) => setEmail(e.target.value)}
+//           required
+//         />
+//         <input
+//           type="password"
+//           placeholder="Hasło"
+//           value={password}
+//           onChange={(e) => setPassword(e.target.value)}
+//           required
+//         />
+//         <button type="submit" className="btn-primary">
+//           Zaloguj
+//         </button>
+//       </form>
+//       {error && <p style={{ color: "red" }}>{error}</p>}{" "}
+//       {/* Display error message */}
+//       <p style={{ marginTop: "15px" }}>
+//         Nie masz konta? <Link to="/register">Zarejestruj się</Link>{" "}
+//         {/* <-- Użyj Link zamiast a */}
+//       </p>
+//     </div>
+//   );
+// }
+
+// export default LoginPage;
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { loginUser } from "../services/api"; // Upewnij się, że to jest "../services/api"
+import { Link } from "react-router-dom";
 
 /**
  * Komponent strony logowania.
  * Umożliwia użytkownikowi wprowadzenie danych logowania i przejście do dashboardu.
  */
 function LoginPage({ onLoginSuccess }) {
-  // `onLoginSuccess` to funkcja przekazana z App.js
-  // Stany przechowujące wartości pól formularza (email i hasło).
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const navigate = useNavigate(); // Funkcja do nawigacji po aplikacji.
+  const [error, setError] = useState(null); // State for handling login errors
+  const navigate = useNavigate();
 
-  /**
-   * Obsługuje przesłanie formularza logowania.
-   * @param {Event} e - Obiekt zdarzenia DOM.
-   */
-  const handleLogin = (e) => {
-    e.preventDefault(); // Zapobiega domyślnej akcji formularza (przeładowaniu strony).
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setError(null); // Clear previous errors
 
-    // Prosta walidacja: sprawdza, czy pola email i hasło nie są puste.
-    // W prawdziwej aplikacji, tutaj nastąpiłaby komunikacja z backendem w celu weryfikacji danych.
-    if (email && password) {
-      localStorage.setItem("user", email); // Symulacja zalogowania: zapisanie emaila w localStorage.
-      onLoginSuccess(); // Wywołanie funkcji z App.js, aby zaktualizować globalny stan logowania.
-      navigate("/dashboard"); // Przekierowanie użytkownika na stronę dashboardu.
-    } else {
-      alert("Wprowadź email i hasło."); // Komunikat dla użytkownika w przypadku pustych pól.
+    if (!email || !password) {
+      setError("Wprowadź email i hasło.");
+      return;
+    }
+
+    try {
+      // Call the backend login endpoint
+      // Używamy userName: email, password: password tak jak w Twojej działającej wersji
+      const data = await loginUser({ userName: email, password: password });
+
+      // Store the token and user email
+      localStorage.setItem("token", data.token);
+      // Upewnij się, czy Twój backend zwraca 'email' w obiekcie data. Jeśli nie, użyj 'email' ze stanu: localStorage.setItem("userEmail", email);
+      localStorage.setItem("userEmail", data.email);
+
+      onLoginSuccess(); // Update global login state in App.js
+      navigate("/dashboard"); // Redirect to dashboard
+    } catch (err) {
+      console.error("Login failed:", err);
+      // Ulepszona obsługa błędów, aby wyświetlić komunikat z serwera
+      if (err.message) {
+        try {
+          const errorJson = JSON.parse(err.message);
+          if (errorJson.errors) {
+            let errorMessages = [];
+            for (const key in errorJson.errors) {
+              errorMessages.push(`${key}: ${errorJson.errors[key].join(", ")}`);
+            }
+            setError(
+              errorMessages.join("\n") ||
+                "Logowanie nie powiodło się. Sprawdź dane logowania."
+            );
+          } else if (typeof errorJson === "string") {
+            setError(errorJson);
+          } else {
+            setError(err.message);
+          }
+        } catch (parseError) {
+          setError(
+            err.message || "Logowanie nie powiodło się. Sprawdź dane logowania."
+          );
+        }
+      } else {
+        setError("Logowanie nie powiodło się. Sprawdź dane logowania.");
+      }
     }
   };
 
   return (
-    <div className="container">
-      <h2>Logowanie</h2>
-      <form onSubmit={handleLogin}>
-        {" "}
-        {/* Formularz, który wywoła handleLogin po przesłaniu */}
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)} // Aktualizacja stanu emaila przy zmianie inputa
-        />
-        <input
-          type="password"
-          placeholder="Hasło"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)} // Aktualizacja stanu hasła przy zmianie inputa
-        />
-        <button type="submit" className="btn-primary">
-          Zaloguj
-        </button>
-      </form>
+    // Zmieniamy klasę z "container" na "auth-container" dla centrowania i tła
+    <div className="auth-container">
+      {/* Dodajemy "auth-box" dla białego tła i cienia */}
+      <div className="auth-box">
+        <h2>Logowanie</h2>
+        {/* Wyświetlanie błędu z klasą CSS */}
+        {error && <p className="error-message">{error}</p>}
+        <form onSubmit={handleLogin}>
+          <label>
+            Email:
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </label>
+          <label>
+            Hasło:
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </label>
+          {/* Usuwamy "btn-primary", bo stylizacja guzika jest już w auth-box button */}
+          <button type="submit">Zaloguj</button>
+        </form>
+        <p>
+          Nie masz konta? <Link to="/register">Zarejestruj się</Link>{" "}
+        </p>
+      </div>
     </div>
   );
 }
